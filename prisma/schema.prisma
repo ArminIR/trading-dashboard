@@ -1,0 +1,216 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum TradeSide {
+  LONG
+  SHORT
+}
+
+enum TagType {
+  SETUP
+  MISTAKE
+  EMOTION
+  EXECUTION
+  GENERAL
+}
+
+enum TradeRating {
+  A_PLUS
+  A
+  B
+  C
+  F
+}
+
+enum ReviewPeriodType {
+  DAILY
+  WEEKLY
+}
+
+model User {
+  id              String           @id @default(cuid())
+  email           String           @unique
+  name            String?
+  passwordHash    String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  sessions        Session[]
+  accounts        Account[]
+  playbooks       Playbook[]
+  tags            Tag[]
+  trades          Trade[]
+  reviews         Review[]
+  importTemplates ImportTemplate[]
+  settings        Setting[]
+}
+
+model Session {
+  id               String   @id @default(cuid())
+  userId           String
+  sessionTokenHash String   @unique
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Account {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  broker      String?
+  initialSize Float?
+  trades      Trade[]
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model Playbook {
+  id                String         @id @default(cuid())
+  userId            String?
+  user              User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String
+  description       String?
+  marketConditions  String?
+  entryCriteria     String?
+  exitCriteria      String?
+  invalidationRules String?
+  checklist         String?
+  exampleImagesJson String?
+  trades            Trade[]
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model Tag {
+  id        String    @id @default(cuid())
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  type      TagType
+  color     String?
+  trades    TradeTag[]
+  createdAt DateTime  @default(now())
+
+  @@unique([userId, name, type])
+  @@index([userId])
+}
+
+model Trade {
+  id               String       @id @default(cuid())
+  userId           String?
+  user             User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tradeDate        DateTime
+  entryTime        DateTime?
+  exitTime         DateTime?
+  symbol           String
+  market           String
+  side             TradeSide
+  accountId        String
+  account          Account      @relation(fields: [accountId], references: [id])
+  playbookId       String?
+  playbook         Playbook?    @relation(fields: [playbookId], references: [id])
+  quantity         Float
+  entryPrice       Float
+  exitPrice        Float
+  fees             Float        @default(0)
+  grossPnl         Float
+  netPnl           Float
+  riskAmount       Float?
+  rMultiple        Float?
+  confidenceRating Int?
+  entryReason      String?
+  exitReason       String?
+  notes            String?
+  preTradeNotes    String?
+  postTradeNotes   String?
+  lessonsLearned   String?
+  executionQuality String?
+  holdMinutes      Int?
+  followedPlan     Boolean      @default(false)
+  rating           TradeRating?
+  importSource     String?
+  images           TradeImage[]
+  tags             TradeTag[]
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([tradeDate])
+  @@index([symbol])
+}
+
+model TradeImage {
+  id        String   @id @default(cuid())
+  tradeId    String
+  trade      Trade    @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  url        String
+  caption    String?
+  createdAt  DateTime @default(now())
+}
+
+model TradeTag {
+  tradeId String
+  tagId   String
+  trade   Trade @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  tag     Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([tradeId, tagId])
+}
+
+model Review {
+  id               String           @id @default(cuid())
+  userId           String?
+  user             User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodType       ReviewPeriodType
+  reviewDate       DateTime
+  title            String
+  summary          String?
+  topLessons       String?
+  biggestMistakes  String?
+  repeatedPatterns String?
+  improvementGoals String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([userId])
+}
+
+model ImportTemplate {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  mappingJson String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+  @@index([userId])
+}
